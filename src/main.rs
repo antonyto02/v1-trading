@@ -1,14 +1,14 @@
 use std::error::Error;
 
+mod stream;
+mod state;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenvy::dotenv().ok();
     env_logger::init();
 
-    let api_key = std::env::var("BINANCE_API_KEY")?;
-    let api_secret = std::env::var("BINANCE_API_SECRET")?;
-
-    println!("Credenciales cargadas correctamente");
+    stream::user_stream::spawn_user_stream().await?;
 
     Ok(())
 }
