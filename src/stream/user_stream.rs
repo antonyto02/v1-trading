@@ -1,7 +1,7 @@
 use std::{env, error::Error, time::Duration};
 
 use futures_util::StreamExt;
-use tokio::time::sleep;
+use tokio::time::{sleep, interval};
 use tokio_tungstenite::connect_async;
 
 const DEFAULT_REST_BASE: &str = "https://api.binance.com";
@@ -34,6 +34,12 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error>> {
         match connect_async(&ws_url).await {
             Ok((mut ws_stream, _)) => {
                 println!("Connected to user stream: {ws_url}");
+                let keepalive_handle = tokio::spawn(keepalive_listen_key(
+                    client.clone(),
+                    rest_base.clone(),
+                    api_key.clone(),
+                    listen_key.clone(),
+                ));
                 while let Some(message) = ws_stream.next().await {
                     match message {
                         Ok(msg) => {
@@ -47,6 +53,7 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error>> {
                         }
                     }
                 }
+                keepalive_handle.abort();
                 eprintln!("WebSocket disconnected. Reconnecting...");
             }
             Err(err) => {
@@ -83,4 +90,45 @@ async fn create_listen_key(
         .ok_or("listenKey missing in response")?;
 
     Ok(listen_key.to_string())
+}
+
+async fn keepalive_listen_key(
+    client: reqwest::Client,
+    rest_base: String,
+    api_key: String,
+    listen_key: String,
+) {
+    let mut ticker = interval(Duration::from_secs(30 * 60));
+    loop {
+        ticker.tick().await;
+        if let Err(err) = renew_listen_key(&client, &rest_base, &api_key, &listen_key).await {
+            eprintln!("Failed to renew listenKey: {err}");
+        }
+    }
+}
+
+async fn renew_listen_key(
+    client: &reqwest::Client,
+    rest_base: &str,
+    api_key: &str,
+    listen_key: &str,
+) -> Result<(), Box<dyn Error>> {
+    let url = format!(
+        "{}/api/v3/userDataStream?listenKey={}",
+        rest_base.trim_end_matches('/'),
+        listen_key
+    );
+    let response = client
+        .put(url)
+        .header("X-MBX-APIKEY", api_key)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("listenKey keepalive failed: {status} {body}").into());
+    }
+
+    Ok(())
 }
