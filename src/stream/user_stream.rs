@@ -7,7 +7,7 @@ use tokio_tungstenite::connect_async;
 const DEFAULT_REST_BASE: &str = "https://api.binance.com";
 const DEFAULT_WS_BASE: &str = "wss://stream.binance.com:9443";
 
-pub async fn spawn_user_stream() -> Result<(), Box<dyn Error>> {
+pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
     let api_key = env::var("BINANCE_API_KEY")?;
     let _api_secret = env::var("BINANCE_API_SECRET")?;
     let rest_base = env::var("BINANCE_REST_BASE_URL").unwrap_or_else(|_| DEFAULT_REST_BASE.to_string());
@@ -69,7 +69,7 @@ async fn create_listen_key(
     client: &reqwest::Client,
     rest_base: &str,
     api_key: &str,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String, Box<dyn Error + Send + Sync>> {
     let url = format!("{}/api/v3/userDataStream", rest_base.trim_end_matches('/'));
     let response = client
         .post(url)
@@ -112,7 +112,7 @@ async fn renew_listen_key(
     rest_base: &str,
     api_key: &str,
     listen_key: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     let url = format!(
         "{}/api/v3/userDataStream?listenKey={}",
         rest_base.trim_end_matches('/'),

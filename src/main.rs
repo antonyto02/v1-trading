@@ -4,7 +4,7 @@ mod stream;
 mod state;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     dotenvy::dotenv().ok();
     env_logger::init();
 

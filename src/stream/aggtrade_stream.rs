@@ -6,7 +6,9 @@ use tokio_tungstenite::connect_async;
 
 const DEFAULT_WS_BASE: &str = "wss://stream.binance.com:9443";
 
-pub async fn spawn_aggtrade_stream(symbol: &str) -> Result<(), Box<dyn Error>> {
+pub async fn spawn_aggtrade_stream(
+    symbol: &str,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     let ws_base = env::var("BINANCE_WS_BASE_URL").unwrap_or_else(|_| DEFAULT_WS_BASE.to_string());
     let stream_name = format!("{}@aggTrade", symbol.to_lowercase());
     let ws_url = format!("{}/ws/{}", ws_base.trim_end_matches('/'), stream_name);
