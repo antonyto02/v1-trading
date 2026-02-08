@@ -1,0 +1,35 @@
+[package]
+name = "v1-trading"
+version = "0.1.0"
+edition = "2024"
+
+# -----------------------------
+# Dependencias principales
+# -----------------------------
+[dependencies]
+
+# Runtime async (base de todo)
+tokio = { version = "1.43", features = ["full"] }
+
+# WebSockets async
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# HTTP REST (órdenes, balances)
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+
+# JSON / serialización
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logs (imprescindible para bots)
+log = "0.4"
+env_logger = "0.11"
+
+# Criptografía (firmas de exchange)
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+dotenvy = "0.15"
+
