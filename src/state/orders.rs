@@ -1,3 +1,5 @@
+use std::sync::{Mutex, OnceLock};
+
 #[derive(Debug, Clone)]
 pub struct SpotState {
     pub bid_price: Option<f64>,
@@ -47,4 +49,19 @@ impl OrdersState {
             orders: (0..4).map(|_| ActiveOrder::new()).collect(),
         }
     }
+}
+
+static ORDERS_STATE: OnceLock<Mutex<OrdersState>> = OnceLock::new();
+
+pub fn set_orders_state(state: OrdersState) {
+    let lock = ORDERS_STATE.get_or_init(|| Mutex::new(OrdersState::new()));
+    let mut guard = lock.lock().expect("orders state lock poisoned");
+    *guard = state;
+}
+
+pub fn get_orders_state_snapshot() -> OrdersState {
+    let lock = ORDERS_STATE.get_or_init(|| Mutex::new(OrdersState::new()));
+    lock.lock()
+        .expect("orders state lock poisoned")
+        .clone()
 }

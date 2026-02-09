@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
 use crate::state::orderbook::{set_orderbook_state, OrderbookLevel, OrderbookState};
-use crate::state::orders::OrdersState;
+use crate::state::orders::{set_orders_state, OrdersState};
 use crate::stream;
 use serde_json::Value;
 
@@ -18,6 +18,7 @@ pub async fn start_streams(
     EvaluateBuyOrders();
     let orders_state = OrdersState::new();
     println!("Orders state initialized: {:?}", orders_state);
+    set_orders_state(orders_state);
 
     let bookticker_handle = tokio::spawn(async move {
         stream::bookticker_stream::spawn_bookticker_stream(&bookticker_symbol).await
