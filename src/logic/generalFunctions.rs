@@ -13,8 +13,9 @@ pub fn ProcessFrozenBlocks(
     mut candidates: Vec<usize>,
     best_bids: &[OrderbookLevel],
     best_asks: &[OrderbookLevel],
-) -> Vec<usize> {
+) -> (Vec<usize>, Vec<OrderbookLevel>) {
     let orders_state = get_orders_state_snapshot();
+    let mut updated_best_bids = best_bids.to_vec();
 
     for (index, order) in orders_state.orders.iter().enumerate() {
         let bid_price = match order.spot.bid_price {
@@ -32,13 +33,24 @@ pub fn ProcessFrozenBlocks(
             .any(|level| level.price == bid_price);
 
         candidates.retain(|candidate| *candidate != index);
+        if let Some((lowest_index, _)) = updated_best_bids
+            .iter()
+            .enumerate()
+            .min_by(|(_, left), (_, right)| {
+                left.price
+                    .partial_cmp(&right.price)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        {
+            updated_best_bids.remove(lowest_index);
+        }
 
         if !is_in_best_levels {
             Requeue();
         }
     }
 
-    candidates
+    (candidates, updated_best_bids)
 }
 
 #[allow(non_snake_case)]
