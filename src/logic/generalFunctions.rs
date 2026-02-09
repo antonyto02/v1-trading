@@ -1,9 +1,14 @@
 use crate::state::orderbook::{get_orderbook_state_snapshot, OrderbookLevel};
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
+use chrono::Local;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+fn log(message: &str) {
+    println!("[{}] {message}", Local::now().format("%Y-%m-%d %H:%M:%S"));
+}
 
 pub fn get_best_bid_and_ask() -> (Vec<OrderbookLevel>, Vec<OrderbookLevel>) {
     let orderbook = get_orderbook_state_snapshot();
@@ -175,12 +180,15 @@ pub fn Requeue(_sell_order_ids: &[String]) {}
 pub fn CleanOrder(index: usize) {
     let mut orders_state = get_orders_state_snapshot();
     if let Some(order) = orders_state.orders.get_mut(index) {
+        log(&format!("CleanOrder: reseteando orden index={index}."));
         order.spot.bid_price = None;
         order.spot.ask_price = None;
         order.spot.buy_order_ids.clear();
         order.spot.sell_order_ids.clear();
         order.spot.filled_buy = 0.0;
         order.spot.filled_sell = 0.0;
+    } else {
+        log(&format!("CleanOrder: índice inválido {index}, no se encontró orden."));
     }
     set_orders_state(orders_state);
 }
