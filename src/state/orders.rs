@@ -1,6 +1,8 @@
 use std::sync::{Mutex, OnceLock};
 
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SpotState {
     pub bid_price: Option<f64>,
     pub ask_price: Option<f64>,
@@ -23,7 +25,7 @@ impl SpotState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ActiveOrder {
     pub amount_target: f64,
     pub spot: SpotState,
@@ -38,7 +40,7 @@ impl ActiveOrder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OrdersState {
     pub orders: Vec<ActiveOrder>,
 }
