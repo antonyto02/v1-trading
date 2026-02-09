@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
 use crate::state::orderbook::{set_orderbook_state, OrderbookLevel, OrderbookState};
 use crate::state::orders::OrdersState;
 use crate::stream;
@@ -14,6 +15,7 @@ pub async fn start_streams(
     let orderbook_state = initialize_orderbook(&bookticker_symbol).await?;
     println!("Orderbook state initialized: {:?}", orderbook_state);
     set_orderbook_state(orderbook_state);
+    EvaluateBuyOrders();
     let orders_state = OrdersState::new();
     println!("Orders state initialized: {:?}", orders_state);
 
