@@ -24,16 +24,44 @@ pub async fn FillMissingBestBids(
     let api_key = std::env::var("BINANCE_API_KEY").unwrap_or_default();
     let api_secret = std::env::var("BINANCE_API_SECRET").unwrap_or_default();
 
-    let next_ask_price = |bid_price: f64| -> Option<f64> {
-        orderbook_state
-            .asks
+    let tick_size = {
+        let mut prices: Vec<f64> = orderbook_state
+            .bids
             .iter()
-            .filter(|level| level.price > bid_price)
+            .chain(orderbook_state.asks.iter())
             .map(|level| level.price)
+            .collect();
+        prices.sort_by(|left, right| {
+            left.partial_cmp(right)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        prices.dedup_by(|left, right| (*left - *right).abs() < f64::EPSILON);
+        prices
+            .windows(2)
+            .filter_map(|pair| {
+                let diff = pair[1] - pair[0];
+                (diff > 0.0).then_some(diff)
+            })
             .min_by(|left, right| {
                 left.partial_cmp(right)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
+            .unwrap_or(0.0)
+    };
+
+    let next_ask_price = |bid_price: f64| -> Option<f64> {
+        if tick_size <= 0.0 {
+            return None;
+        }
+        let decimals = tick_size
+            .to_string()
+            .split('.')
+            .nth(1)
+            .map(|fractional| fractional.len())
+            .unwrap_or(0);
+        let factor = 10f64.powi(decimals as i32);
+        let next_price = (bid_price + tick_size) * factor;
+        Some(next_price.round() / factor)
     };
 
     for (candidate_index, best_bid) in candidates.iter().zip(best_bids.iter()) {
