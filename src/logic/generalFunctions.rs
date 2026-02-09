@@ -1,11 +1,66 @@
 use crate::state::orderbook::{get_orderbook_state_snapshot, OrderbookLevel};
-use crate::state::orders::get_orders_state_snapshot;
+use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+use std::error::Error;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn get_best_bid_and_ask() -> (Vec<OrderbookLevel>, Vec<OrderbookLevel>) {
     let orderbook = get_orderbook_state_snapshot();
     let best_bids = orderbook.bids.into_iter().take(4).collect();
     let best_asks = orderbook.asks.into_iter().take(4).collect();
     (best_bids, best_asks)
+}
+
+#[allow(non_snake_case)]
+pub async fn FillMissingBestBids(
+    candidates: &[usize],
+    best_bids: &[OrderbookLevel],
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let mut orders_state = get_orders_state_snapshot();
+    let client = reqwest::Client::new();
+    let symbol = "ACTUSDT";
+    let api_key = std::env::var("BINANCE_API_KEY").unwrap_or_default();
+    let api_secret = std::env::var("BINANCE_API_SECRET").unwrap_or_default();
+
+    for (candidate_index, best_bid) in candidates.iter().zip(best_bids.iter()) {
+        let order = match orders_state.orders.get_mut(*candidate_index) {
+            Some(order) => order,
+            None => continue,
+        };
+
+        let amount_target = order.amount_target;
+        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
+        let query = format!(
+            "symbol={symbol}&side=BUY&type=LIMIT&timeInForce=GTC&quantity={amount_target}&price={price}&timestamp={timestamp}",
+            symbol = symbol,
+            amount_target = amount_target,
+            price = best_bid.price,
+            timestamp = timestamp
+        );
+
+        let mut mac = Hmac::<Sha256>::new_from_slice(api_secret.as_bytes())?;
+        mac.update(query.as_bytes());
+        let signature = hex::encode(mac.finalize().into_bytes());
+
+        let response = client
+            .post("https://api.binance.com/api/v3/order")
+            .header("X-MBX-APIKEY", &api_key)
+            .query(&[("signature", signature)])
+            .body(query)
+            .send()
+            .await?;
+
+        if response.status().is_success() {
+            let payload: serde_json::Value = response.json().await?;
+            if let Some(order_id) = payload.get("orderId").and_then(|value| value.as_i64()) {
+                order.spot.buy_order_ids.push(order_id.to_string());
+            }
+        }
+    }
+
+    set_orders_state(orders_state);
+    Ok(())
 }
 
 #[allow(non_snake_case)]
