@@ -16,24 +16,22 @@ pub async fn spawn_aggtrade_stream(
     loop {
         match connect_async(&ws_url).await {
             Ok((mut ws_stream, _)) => {
-                println!("Connected to aggTrade stream: {ws_url}");
                 while let Some(message) = ws_stream.next().await {
                     match message {
                         Ok(msg) => {
                             if msg.is_text() || msg.is_binary() {
-                                println!("{}", msg);
+                                let _ = msg;
                             }
                         }
                         Err(err) => {
-                            eprintln!("aggTrade WebSocket error: {err}");
+                            let _ = err;
                             break;
                         }
                     }
                 }
-                eprintln!("aggTrade WebSocket disconnected. Reconnecting...");
             }
             Err(err) => {
-                eprintln!("Failed to connect aggTrade WebSocket: {err}");
+                let _ = err;
             }
         }
 

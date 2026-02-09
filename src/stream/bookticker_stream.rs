@@ -16,24 +16,22 @@ pub async fn spawn_bookticker_stream(
     loop {
         match connect_async(&ws_url).await {
             Ok((mut ws_stream, _)) => {
-                println!("Connected to bookTicker stream: {ws_url}");
                 while let Some(message) = ws_stream.next().await {
                     match message {
                         Ok(msg) => {
                             if msg.is_text() || msg.is_binary() {
-                                println!("{}", msg);
+                                let _ = msg;
                             }
                         }
                         Err(err) => {
-                            eprintln!("bookTicker WebSocket error: {err}");
+                            let _ = err;
                             break;
                         }
                     }
                 }
-                eprintln!("bookTicker WebSocket disconnected. Reconnecting...");
             }
             Err(err) => {
-                eprintln!("Failed to connect bookTicker WebSocket: {err}");
+                let _ = err;
             }
         }
 

@@ -21,7 +21,7 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
         let listen_key = match create_listen_key(&client, &rest_base, &api_key).await {
             Ok(key) => key,
             Err(err) => {
-                eprintln!("Failed to create listenKey: {err}");
+                let _ = err;
                 sleep(Duration::from_secs(5)).await;
                 continue;
             }
@@ -35,7 +35,6 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
 
         match connect_async(&ws_url).await {
             Ok((mut ws_stream, _)) => {
-                println!("Connected to user stream: {ws_url}");
                 let keepalive_handle = tokio::spawn(keepalive_listen_key(
                     client.clone(),
                     rest_base.clone(),
@@ -61,16 +60,15 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
                             }
                         }
                         Err(err) => {
-                            eprintln!("WebSocket error: {err}");
+                            let _ = err;
                             break;
                         }
                     }
                 }
                 keepalive_handle.abort();
-                eprintln!("WebSocket disconnected. Reconnecting...");
             }
             Err(err) => {
-                eprintln!("Failed to connect WebSocket: {err}");
+                let _ = err;
             }
         }
 
@@ -115,7 +113,7 @@ async fn keepalive_listen_key(
     loop {
         ticker.tick().await;
         if let Err(err) = renew_listen_key(&client, &rest_base, &api_key, &listen_key).await {
-            eprintln!("Failed to renew listenKey: {err}");
+            let _ = err;
         }
     }
 }

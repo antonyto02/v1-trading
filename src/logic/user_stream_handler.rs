@@ -59,6 +59,6 @@ pub async fn handle_user_stream_message(message: String) {
     }
 
     if let Err(err) = add_filled_buy_for_bid_price(price, quantity).await {
-        eprintln!("Failed to process filled buy: {err}");
+        let _ = err;
     }
 }
