@@ -1,6 +1,8 @@
 use std::sync::{Mutex, OnceLock};
 
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct OrderbookLevel {
     pub price: f64,
     pub qty: f64,
@@ -12,7 +14,7 @@ impl OrderbookLevel {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OrderbookState {
     pub bids: Vec<OrderbookLevel>,
     pub asks: Vec<OrderbookLevel>,
