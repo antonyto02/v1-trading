@@ -6,13 +6,12 @@ pub async fn EvaluateBuyOrders() {
     let _ = &mut candidates;
 
     let (best_bids, best_asks) = generalFunctions::get_best_bid_and_ask();
-    println!("Best bids/asks: {:?}", (best_bids.clone(), best_asks.clone()));
 
     let (candidates, best_bids) =
         generalFunctions::ProcessFrozenBlocks(candidates, &best_bids, &best_asks);
     let (candidates, best_bids) =
         generalFunctions::ProcessActiveBuyOrders(candidates, &best_bids);
     if let Err(error) = generalFunctions::FillMissingBestBids(&candidates, &best_bids).await {
-        println!("FillMissingBestBids failed: {error}");
+        let _ = error;
     }
 }
