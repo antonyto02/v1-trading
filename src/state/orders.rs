@@ -1,4 +1,8 @@
-#[derive(Debug, Clone)]
+use std::sync::{Mutex, OnceLock};
+
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub struct SpotState {
     pub bid_price: Option<f64>,
     pub ask_price: Option<f64>,
@@ -21,7 +25,7 @@ impl SpotState {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ActiveOrder {
     pub amount_target: f64,
     pub spot: SpotState,
@@ -36,7 +40,7 @@ impl ActiveOrder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct OrdersState {
     pub orders: Vec<ActiveOrder>,
 }
@@ -47,4 +51,19 @@ impl OrdersState {
             orders: (0..4).map(|_| ActiveOrder::new()).collect(),
         }
     }
+}
+
+static ORDERS_STATE: OnceLock<Mutex<OrdersState>> = OnceLock::new();
+
+pub fn set_orders_state(state: OrdersState) {
+    let lock = ORDERS_STATE.get_or_init(|| Mutex::new(OrdersState::new()));
+    let mut guard = lock.lock().expect("orders state lock poisoned");
+    *guard = state;
+}
+
+pub fn get_orders_state_snapshot() -> OrdersState {
+    let lock = ORDERS_STATE.get_or_init(|| Mutex::new(OrdersState::new()));
+    lock.lock()
+        .expect("orders state lock poisoned")
+        .clone()
 }
