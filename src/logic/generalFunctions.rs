@@ -25,6 +25,14 @@ pub async fn FillMissingBestBids(
     let api_secret = std::env::var("BINANCE_API_SECRET").unwrap_or_default();
     let tick_size = get_asset_state_snapshot().tick_size;
 
+    let round_to_tick = |price: f64| -> f64 {
+        if tick_size == 0.0 {
+            return price;
+        }
+        let steps = (price / tick_size).round();
+        steps * tick_size
+    };
+
     for (candidate_index, best_bid) in candidates.iter().zip(best_bids.iter()) {
         let order = match orders_state.orders.get_mut(*candidate_index) {
             Some(order) => order,
@@ -58,7 +66,7 @@ pub async fn FillMissingBestBids(
             if let Some(order_id) = payload.get("orderId").and_then(|value| value.as_i64()) {
                 order.spot.buy_order_ids.push(order_id.to_string());
                 order.spot.bid_price = Some(best_bid.price);
-                order.spot.ask_price = Some(best_bid.price + tick_size);
+                order.spot.ask_price = Some(round_to_tick(best_bid.price + tick_size));
             }
         }
     }
