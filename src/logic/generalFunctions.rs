@@ -1,5 +1,6 @@
 use crate::state::orderbook::{get_orderbook_state_snapshot, OrderbookLevel};
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
+use crate::state::asset::get_asset_state_snapshot;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use std::error::Error;
@@ -22,6 +23,7 @@ pub async fn FillMissingBestBids(
     let symbol = "ACTUSDT";
     let api_key = std::env::var("BINANCE_API_KEY").unwrap_or_default();
     let api_secret = std::env::var("BINANCE_API_SECRET").unwrap_or_default();
+    let tick_size = get_asset_state_snapshot().tick_size;
 
     for (candidate_index, best_bid) in candidates.iter().zip(best_bids.iter()) {
         let order = match orders_state.orders.get_mut(*candidate_index) {
@@ -56,6 +58,7 @@ pub async fn FillMissingBestBids(
             if let Some(order_id) = payload.get("orderId").and_then(|value| value.as_i64()) {
                 order.spot.buy_order_ids.push(order_id.to_string());
                 order.spot.bid_price = Some(best_bid.price);
+                order.spot.ask_price = Some(best_bid.price + tick_size);
             }
         }
     }

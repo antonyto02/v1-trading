@@ -5,12 +5,14 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 pub struct AssetState {
     pub symbol: String,
+    pub tick_size: f64,
 }
 
 impl AssetState {
     pub fn new() -> Self {
         Self {
             symbol: "ACTUSDT".to_string(),
+            tick_size: 0.0001,
         }
     }
 }
