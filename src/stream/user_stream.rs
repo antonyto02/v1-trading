@@ -4,6 +4,8 @@ use futures_util::StreamExt;
 use tokio::time::{sleep, interval};
 use tokio_tungstenite::connect_async;
 
+use crate::logic::user_stream_handler::handle_user_stream_message;
+
 const DEFAULT_REST_BASE: &str = "https://api.binance.com";
 const DEFAULT_WS_BASE: &str = "wss://stream.binance.com:9443";
 
@@ -44,7 +46,18 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
                     match message {
                         Ok(msg) => {
                             if msg.is_text() || msg.is_binary() {
-                                println!("{}", msg);
+                                if let Ok(payload) = msg.to_text() {
+                                    let payload = payload.to_string();
+                                    tokio::spawn(async move {
+                                        handle_user_stream_message(payload).await;
+                                    });
+                                } else if msg.is_binary() {
+                                    if let Ok(payload) = String::from_utf8(msg.into_data()) {
+                                        tokio::spawn(async move {
+                                            handle_user_stream_message(payload).await;
+                                        });
+                                    }
+                                }
                             }
                         }
                         Err(err) => {
