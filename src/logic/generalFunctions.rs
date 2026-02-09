@@ -54,4 +54,51 @@ pub fn ProcessFrozenBlocks(
 }
 
 #[allow(non_snake_case)]
+pub fn ProcessActiveBuyOrders(
+    mut candidates: Vec<usize>,
+    best_bids: &[OrderbookLevel],
+) -> (Vec<usize>, Vec<OrderbookLevel>) {
+    let orders_state = get_orders_state_snapshot();
+    let mut updated_best_bids = best_bids.to_vec();
+
+    for &index in candidates.clone().iter() {
+        let order = match orders_state.orders.get(index) {
+            Some(order) => order,
+            None => continue,
+        };
+
+        let bid_price = match order.spot.bid_price {
+            Some(price) => price,
+            None => continue,
+        };
+
+        let is_in_best_bids = updated_best_bids
+            .iter()
+            .any(|level| level.price == bid_price);
+
+        if is_in_best_bids {
+            candidates.retain(|candidate| *candidate != index);
+            if let Some((lowest_index, _)) = updated_best_bids
+                .iter()
+                .enumerate()
+                .min_by(|(_, left), (_, right)| {
+                    left.price
+                        .partial_cmp(&right.price)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+            {
+                updated_best_bids.remove(lowest_index);
+            }
+        } else {
+            CleanOrder();
+        }
+    }
+
+    (candidates, updated_best_bids)
+}
+
+#[allow(non_snake_case)]
 pub fn Requeue() {}
+
+#[allow(non_snake_case)]
+pub fn CleanOrder() {}
