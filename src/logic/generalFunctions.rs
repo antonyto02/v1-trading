@@ -161,7 +161,7 @@ pub fn ProcessActiveBuyOrders(
                 updated_best_bids.remove(lowest_index);
             }
         } else {
-            CleanOrder(&order.spot.buy_order_ids);
+            CleanOrder(index);
         }
     }
 
@@ -172,4 +172,15 @@ pub fn ProcessActiveBuyOrders(
 pub fn Requeue(_sell_order_ids: &[String]) {}
 
 #[allow(non_snake_case)]
-pub fn CleanOrder(_buy_order_ids: &[String]) {}
+pub fn CleanOrder(index: usize) {
+    let mut orders_state = get_orders_state_snapshot();
+    if let Some(order) = orders_state.orders.get_mut(index) {
+        order.spot.bid_price = None;
+        order.spot.ask_price = None;
+        order.spot.buy_order_ids.clear();
+        order.spot.sell_order_ids.clear();
+        order.spot.filled_buy = 0.0;
+        order.spot.filled_sell = 0.0;
+    }
+    set_orders_state(orders_state);
+}

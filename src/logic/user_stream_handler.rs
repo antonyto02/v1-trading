@@ -70,8 +70,8 @@ pub async fn handle_user_stream_message(message: String) {
                     add_filled_sell_for_ask_price(price, quantity);
                 }
                 "FILLED" => {
-                    if let Some(sell_order_ids) = add_filled_sell_for_ask_price(price, quantity) {
-                        CleanOrder(&sell_order_ids);
+                    if let Some(order_index) = add_filled_sell_for_ask_price(price, quantity) {
+                        CleanOrder(order_index);
                         EvaluateBuyOrders().await;
                     }
                 }
