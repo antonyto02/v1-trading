@@ -34,7 +34,7 @@ pub struct ActiveOrder {
 impl ActiveOrder {
     pub fn new() -> Self {
         Self {
-            amount_target: 1000.0,
+            amount_target: 500.0,
             spot: SpotState::new(),
         }
     }
