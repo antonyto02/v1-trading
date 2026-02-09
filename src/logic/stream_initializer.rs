@@ -15,10 +15,10 @@ pub async fn start_streams(
     let orderbook_state = initialize_orderbook(&bookticker_symbol).await?;
     println!("Orderbook state initialized: {:?}", orderbook_state);
     set_orderbook_state(orderbook_state);
-    EvaluateBuyOrders().await;
     let orders_state = OrdersState::new();
     println!("Orders state initialized: {:?}", orders_state);
     set_orders_state(orders_state);
+    EvaluateBuyOrders().await;
 
     let bookticker_handle = tokio::spawn(async move {
         stream::bookticker_stream::spawn_bookticker_stream(&bookticker_symbol).await
