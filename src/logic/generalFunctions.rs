@@ -55,6 +55,7 @@ pub async fn FillMissingBestBids(
             let payload: serde_json::Value = response.json().await?;
             if let Some(order_id) = payload.get("orderId").and_then(|value| value.as_i64()) {
                 order.spot.buy_order_ids.push(order_id.to_string());
+                order.spot.bid_price = Some(best_bid.price);
             }
         }
     }
