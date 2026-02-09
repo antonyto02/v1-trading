@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::state::orderbook::{OrderbookLevel, OrderbookState};
+use crate::state::orderbook::{set_orderbook_state, OrderbookLevel, OrderbookState};
 use crate::state::orders::OrdersState;
 use crate::stream;
 use serde_json::Value;
@@ -13,6 +13,7 @@ pub async fn start_streams(
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let orderbook_state = initialize_orderbook(&bookticker_symbol).await?;
     println!("Orderbook state initialized: {:?}", orderbook_state);
+    set_orderbook_state(orderbook_state);
     let orders_state = OrdersState::new();
     println!("Orders state initialized: {:?}", orders_state);
 
