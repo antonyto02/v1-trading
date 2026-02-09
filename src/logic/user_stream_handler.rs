@@ -18,7 +18,7 @@ struct ExecutionReportEvent {
 }
 
 pub async fn handle_user_stream_message(message: String) {
-    let event: ExecutionReportEvent = match serde_json::from_str(message) {
+    let event: ExecutionReportEvent = match serde_json::from_str(&message) {
         Ok(payload) => payload,
         Err(_) => return,
     };
