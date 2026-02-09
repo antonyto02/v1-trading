@@ -18,10 +18,23 @@ pub async fn FillMissingBestBids(
     best_bids: &[OrderbookLevel],
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let mut orders_state = get_orders_state_snapshot();
+    let orderbook_state = get_orderbook_state_snapshot();
     let client = reqwest::Client::new();
     let symbol = "ACTUSDT";
     let api_key = std::env::var("BINANCE_API_KEY").unwrap_or_default();
     let api_secret = std::env::var("BINANCE_API_SECRET").unwrap_or_default();
+
+    let next_ask_price = |bid_price: f64| -> Option<f64> {
+        orderbook_state
+            .asks
+            .iter()
+            .filter(|level| level.price > bid_price)
+            .map(|level| level.price)
+            .min_by(|left, right| {
+                left.partial_cmp(right)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+    };
 
     for (candidate_index, best_bid) in candidates.iter().zip(best_bids.iter()) {
         let order = match orders_state.orders.get_mut(*candidate_index) {
@@ -56,6 +69,7 @@ pub async fn FillMissingBestBids(
             if let Some(order_id) = payload.get("orderId").and_then(|value| value.as_i64()) {
                 order.spot.buy_order_ids.push(order_id.to_string());
                 order.spot.bid_price = Some(best_bid.price);
+                order.spot.ask_price = next_ask_price(best_bid.price);
             }
         }
     }
