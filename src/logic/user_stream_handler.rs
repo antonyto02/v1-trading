@@ -104,8 +104,8 @@ pub async fn handle_user_stream_message(message: String) {
                         log(&format!(
                             "SELL FILLED: limpiando orden index={order_index} y reevaluando buy orders."
                         ));
-                        // CleanOrder(order_index);
-                        // EvaluateBuyOrders().await;
+                        CleanOrder(order_index);
+                        EvaluateBuyOrders().await;
                     } else {
                         log("SELL FILLED: no se encontró orden para limpiar.");
                     }
