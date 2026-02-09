@@ -1,6 +1,8 @@
 use serde::Deserialize;
 
-use crate::logic::order::add_filled_buy_for_bid_price;
+use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
+use crate::logic::generalFunctions::CleanOrder;
+use crate::logic::order::{add_filled_buy_for_bid_price, add_filled_sell_for_ask_price};
 use crate::state::asset::get_asset_state_snapshot;
 
 #[derive(Debug, Deserialize)]
@@ -15,6 +17,8 @@ struct ExecutionReportEvent {
     last_executed_price: Option<String>,
     #[serde(rename = "l")]
     last_executed_quantity: Option<String>,
+    #[serde(rename = "X")]
+    order_status: String,
 }
 
 pub async fn handle_user_stream_message(message: String) {
@@ -29,10 +33,6 @@ pub async fn handle_user_stream_message(message: String) {
 
     let asset_symbol = get_asset_state_snapshot().symbol;
     if event.symbol != asset_symbol {
-        return;
-    }
-
-    if event.side != "BUY" {
         return;
     }
 
@@ -58,7 +58,26 @@ pub async fn handle_user_stream_message(message: String) {
         return;
     }
 
-    if let Err(err) = add_filled_buy_for_bid_price(price, quantity).await {
-        let _ = err;
+    match event.side.as_str() {
+        "BUY" => {
+            if let Err(err) = add_filled_buy_for_bid_price(price, quantity).await {
+                let _ = err;
+            }
+        }
+        "SELL" => {
+            match event.order_status.as_str() {
+                "PARTIALLY_FILLED" => {
+                    add_filled_sell_for_ask_price(price, quantity);
+                }
+                "FILLED" => {
+                    if let Some(sell_order_ids) = add_filled_sell_for_ask_price(price, quantity) {
+                        CleanOrder(&sell_order_ids);
+                        EvaluateBuyOrders().await;
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
     }
 }

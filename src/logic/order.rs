@@ -73,3 +73,27 @@ pub async fn add_filled_buy_for_bid_price(price: f64, quantity: f64) -> Result<(
     set_orders_state(orders_state);
     Ok(())
 }
+
+pub fn add_filled_sell_for_ask_price(price: f64, quantity: f64) -> Option<Vec<String>> {
+    let mut orders_state = get_orders_state_snapshot();
+    let mut matched_sell_ids = None;
+
+    for order in orders_state.orders.iter_mut() {
+        let ask_price = match order.spot.ask_price {
+            Some(value) => value,
+            None => continue,
+        };
+
+        if (ask_price - price).abs() < 1e-9 {
+            order.spot.filled_sell += quantity;
+            matched_sell_ids = Some(order.spot.sell_order_ids.clone());
+            break;
+        }
+    }
+
+    if matched_sell_ids.is_some() {
+        set_orders_state(orders_state);
+    }
+
+    matched_sell_ids
+}
