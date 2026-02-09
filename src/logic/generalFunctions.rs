@@ -46,7 +46,7 @@ pub fn ProcessFrozenBlocks(
         }
 
         if !is_in_best_levels {
-            Requeue();
+            Requeue(&order.spot.sell_order_ids);
         }
     }
 
@@ -90,7 +90,7 @@ pub fn ProcessActiveBuyOrders(
                 updated_best_bids.remove(lowest_index);
             }
         } else {
-            CleanOrder();
+            CleanOrder(&order.spot.buy_order_ids);
         }
     }
 
@@ -98,7 +98,7 @@ pub fn ProcessActiveBuyOrders(
 }
 
 #[allow(non_snake_case)]
-pub fn Requeue() {}
+pub fn Requeue(_sell_order_ids: &[String]) {}
 
 #[allow(non_snake_case)]
-pub fn CleanOrder() {}
+pub fn CleanOrder(_buy_order_ids: &[String]) {}
