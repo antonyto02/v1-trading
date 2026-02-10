@@ -1,10 +1,10 @@
 use serde::Deserialize;
 
-use chrono::Local;
 use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
 use crate::logic::generalFunctions::CleanOrder;
 use crate::logic::order::{add_filled_buy_for_bid_price, add_filled_sell_for_ask_price};
 use crate::state::asset::get_asset_state_snapshot;
+use chrono::Local;
 
 fn log(message: &str) {
     println!("[{}] {message}", Local::now().format("%Y-%m-%d %H:%M:%S"));
@@ -93,28 +93,26 @@ pub async fn handle_user_stream_message(message: String) {
                 log(&format!("Error en flujo BUY: {err}"));
             }
         }
-        "SELL" => {
-            match event.order_status.as_str() {
-                "PARTIALLY_FILLED" => {
-                    log("SELL PARTIALLY_FILLED: sumando filled_sell.");
-                    add_filled_sell_for_ask_price(price, quantity);
-                }
-                "FILLED" => {
-                    if let Some(order_index) = add_filled_sell_for_ask_price(price, quantity) {
-                        log(&format!(
-                            "SELL FILLED: limpiando orden index={order_index} y reevaluando buy orders."
-                        ));
-                        CleanOrder(order_index);
-                        EvaluateBuyOrders().await;
-                    } else {
-                        log("SELL FILLED: no se encontró orden para limpiar.");
-                    }
-                }
-                other => {
-                    log(&format!("SELL con status no manejado: {other}."));
+        "SELL" => match event.order_status.as_str() {
+            "PARTIALLY_FILLED" => {
+                log("SELL PARTIALLY_FILLED: sumando filled_sell.");
+                add_filled_sell_for_ask_price(price, quantity);
+            }
+            "FILLED" => {
+                if let Some(order_index) = add_filled_sell_for_ask_price(price, quantity) {
+                    log(&format!(
+                        "SELL FILLED: limpiando orden index={order_index} y reevaluando buy orders."
+                    ));
+                    CleanOrder(order_index).await;
+                    EvaluateBuyOrders().await;
+                } else {
+                    log("SELL FILLED: no se encontró orden para limpiar.");
                 }
             }
-        }
+            other => {
+                log(&format!("SELL con status no manejado: {other}."));
+            }
+        },
         other => {
             log(&format!("Side no manejado en execution report: {other}."));
         }
