@@ -1,3 +1,4 @@
+use crate::binance::spot_rest_url;
 use crate::state::asset::get_asset_state_snapshot;
 use crate::state::orderbook::{OrderbookLevel, get_orderbook_state_snapshot};
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
@@ -61,7 +62,7 @@ pub async fn FillMissingBestBids(
         let signature = hex::encode(mac.finalize().into_bytes());
 
         let response = client
-            .post("https://api.binance.com/api/v3/order")
+            .post(spot_rest_url("v3/order"))
             .header("X-MBX-APIKEY", &api_key)
             .query(&[("signature", signature)])
             .body(query)
@@ -113,7 +114,7 @@ async fn cancel_spot_orders(
         let signature = hex::encode(mac.finalize().into_bytes());
 
         let response = client
-            .delete("https://api.binance.com/api/v3/order")
+            .delete(spot_rest_url("v3/order"))
             .header("X-MBX-APIKEY", &api_key)
             .query(&[
                 ("symbol", symbol),

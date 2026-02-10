@@ -7,7 +7,7 @@ use crate::state::orders::{OrdersState, set_orders_state};
 use crate::stream;
 use serde_json::Value;
 
-const BINANCE_REST_BASE: &str = "https://api.binance.com";
+use crate::binance::spot_rest_url;
 
 pub async fn start_streams(
     bookticker_symbol: String,
@@ -41,8 +41,8 @@ pub async fn refresh_orderbook_state(symbol: &str) -> Result<(), Box<dyn Error +
 
 async fn fetch_orderbook(symbol: &str) -> Result<OrderbookState, Box<dyn Error + Send + Sync>> {
     let url = format!(
-        "{}/api/v3/depth?symbol={}&limit=10",
-        BINANCE_REST_BASE,
+        "{}?symbol={}&limit=10",
+        spot_rest_url("v3/depth"),
         symbol.to_uppercase()
     );
     let response = reqwest::get(url).await?;
