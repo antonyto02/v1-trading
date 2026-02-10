@@ -171,7 +171,7 @@ pub fn openshort(new_best_bid: f64) {
             continue;
         }
 
-        let short_size = order.spot.filled_buy - order.spot.filled_sell;
+        let short_size = order.amount_target - order.spot.filled_sell;
         if short_size <= 0.0 {
             continue;
         }
