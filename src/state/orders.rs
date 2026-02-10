@@ -28,6 +28,8 @@ impl SpotState {
 #[derive(Debug, Clone, Serialize)]
 pub struct ActiveOrder {
     pub amount_target: f64,
+    pub has_open_short: bool,
+    pub size_position: f64,
     pub spot: SpotState,
 }
 
@@ -35,6 +37,8 @@ impl ActiveOrder {
     pub fn new() -> Self {
         Self {
             amount_target: 500.0,
+            has_open_short: false,
+            size_position: 0.0,
             spot: SpotState::new(),
         }
     }
@@ -63,7 +67,5 @@ pub fn set_orders_state(state: OrdersState) {
 
 pub fn get_orders_state_snapshot() -> OrdersState {
     let lock = ORDERS_STATE.get_or_init(|| Mutex::new(OrdersState::new()));
-    lock.lock()
-        .expect("orders state lock poisoned")
-        .clone()
+    lock.lock().expect("orders state lock poisoned").clone()
 }

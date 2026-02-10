@@ -1,8 +1,9 @@
 use std::error::Error;
 
 use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
-use crate::state::orderbook::{set_orderbook_state, OrderbookLevel, OrderbookState};
-use crate::state::orders::{set_orders_state, OrdersState};
+use crate::state::asset::get_asset_state_snapshot;
+use crate::state::orderbook::{OrderbookLevel, OrderbookState, set_orderbook_state};
+use crate::state::orders::{OrdersState, set_orders_state};
 use crate::stream;
 use serde_json::Value;
 
@@ -12,8 +13,7 @@ pub async fn start_streams(
     bookticker_symbol: String,
     aggtrade_symbol: String,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let orderbook_state = initialize_orderbook(&bookticker_symbol).await?;
-    set_orderbook_state(orderbook_state);
+    refresh_orderbook_state(&bookticker_symbol).await?;
     let orders_state = OrdersState::new();
     set_orders_state(orders_state);
     EvaluateBuyOrders().await;
@@ -33,9 +33,13 @@ pub async fn start_streams(
     Ok(())
 }
 
-async fn initialize_orderbook(
-    symbol: &str,
-) -> Result<OrderbookState, Box<dyn Error + Send + Sync>> {
+pub async fn refresh_orderbook_state(symbol: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let orderbook_state = fetch_orderbook(symbol).await?;
+    set_orderbook_state(orderbook_state);
+    Ok(())
+}
+
+async fn fetch_orderbook(symbol: &str) -> Result<OrderbookState, Box<dyn Error + Send + Sync>> {
     let url = format!(
         "{}/api/v3/depth?symbol={}&limit=10",
         BINANCE_REST_BASE,
@@ -50,16 +54,16 @@ async fn initialize_orderbook(
     Ok(OrderbookState { bids, asks })
 }
 
-fn parse_levels(source: Option<&Value>) -> Result<Vec<OrderbookLevel>, Box<dyn Error + Send + Sync>> {
+fn parse_levels(
+    source: Option<&Value>,
+) -> Result<Vec<OrderbookLevel>, Box<dyn Error + Send + Sync>> {
     let levels = source
         .and_then(|value| value.as_array())
         .ok_or("missing orderbook levels")?;
 
     let mut parsed = Vec::with_capacity(10);
     for level in levels.iter().take(10) {
-        let entries = level
-            .as_array()
-            .ok_or("invalid orderbook level format")?;
+        let entries = level.as_array().ok_or("invalid orderbook level format")?;
         let price = entries
             .get(0)
             .and_then(|value| value.as_str())
@@ -74,4 +78,13 @@ fn parse_levels(source: Option<&Value>) -> Result<Vec<OrderbookLevel>, Box<dyn E
     }
 
     Ok(parsed)
+}
+
+pub fn refresh_orderbook_state_for_current_asset() {
+    let symbol = get_asset_state_snapshot().symbol;
+    tokio::spawn(async move {
+        if let Err(error) = refresh_orderbook_state(&symbol).await {
+            log::error!("Error refrescando orderbook para {}: {}", symbol, error);
+        }
+    });
 }
