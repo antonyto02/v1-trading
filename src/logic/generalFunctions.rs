@@ -162,17 +162,11 @@ pub fn ProcessFrozenBlocks(
             .any(|level| level.price == bid_price);
 
         candidates.retain(|candidate| *candidate != index);
-        if let Some((lowest_index, _)) =
-            updated_best_bids
-                .iter()
-                .enumerate()
-                .min_by(|(_, left), (_, right)| {
-                    left.price
-                        .partial_cmp(&right.price)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
+        if let Some(matching_index) = updated_best_bids
+            .iter()
+            .position(|level| (level.price - bid_price).abs() < 1e-9)
         {
-            updated_best_bids.remove(lowest_index);
+            updated_best_bids.remove(matching_index);
         }
 
         if !is_in_best_levels {
@@ -208,17 +202,11 @@ pub async fn ProcessActiveBuyOrders(
 
         if is_in_best_bids {
             candidates.retain(|candidate| *candidate != index);
-            if let Some((lowest_index, _)) =
-                updated_best_bids
-                    .iter()
-                    .enumerate()
-                    .min_by(|(_, left), (_, right)| {
-                        left.price
-                            .partial_cmp(&right.price)
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })
+            if let Some(matching_index) = updated_best_bids
+                .iter()
+                .position(|level| (level.price - bid_price).abs() < 1e-9)
             {
-                updated_best_bids.remove(lowest_index);
+                updated_best_bids.remove(matching_index);
             }
         } else {
             CleanOrder(index).await;

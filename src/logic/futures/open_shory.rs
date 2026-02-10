@@ -190,6 +190,27 @@ pub fn openshort(new_best_bid: f64) {
         ));
     }
 
+    if let Some((order_index, short_size, _)) = selected.as_ref() {
+        let mut latest_orders_state = get_orders_state_snapshot();
+        if let Some(order) = latest_orders_state.orders.get_mut(*order_index) {
+            if order.has_open_short {
+                log(&format!(
+                    "openshort: orden index={} ya tenía short abierto, se omite intento duplicado.",
+                    order_index
+                ));
+                return;
+            }
+
+            order.has_open_short = true;
+            order.size_position = *short_size;
+            set_orders_state(latest_orders_state);
+            log(&format!(
+                "openshort: short reservado localmente index={}, size_position={short_size} antes de enviar a Binance.",
+                order_index
+            ));
+        }
+    }
+
     tokio::spawn(async move {
         if let Some((order_index, short_size, sell_order_ids)) = selected {
             if open_short_position(&symbol, short_size).await {
@@ -198,7 +219,6 @@ pub fn openshort(new_best_bid: f64) {
                     log(&format!(
                         "Binance OK apertura short para {symbol}. Guardando size_position={short_size}."
                     ));
-                    order.has_open_short = true;
                     order.size_position = short_size;
                     set_orders_state(latest_orders_state);
                 }
@@ -209,6 +229,16 @@ pub fn openshort(new_best_bid: f64) {
                 }
                 Requeue(&sell_order_ids);
                 return;
+            }
+
+            let mut latest_orders_state = get_orders_state_snapshot();
+            if let Some(order) = latest_orders_state.orders.get_mut(order_index) {
+                order.has_open_short = false;
+                order.size_position = 0.0;
+                set_orders_state(latest_orders_state);
+                log(&format!(
+                    "openshort: apertura short fallida, se revierte reserva local index={order_index}."
+                ));
             }
         }
 
