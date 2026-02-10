@@ -28,6 +28,29 @@ struct ExecutionReportEvent {
 
 pub async fn handle_user_stream_message(message: String) {
     log("Recibido mensaje de user stream. Iniciando parseo.");
+
+    match serde_json::from_str::<serde_json::Value>(&message) {
+        Ok(raw) => {
+            let event_type = raw
+                .get("e")
+                .and_then(|value| value.as_str())
+                .unwrap_or("<missing>");
+            let symbol = raw
+                .get("s")
+                .and_then(|value| value.as_str())
+                .unwrap_or("<missing>");
+            log(&format!(
+                "User stream evento raw: e={event_type}, s={symbol}."
+            ));
+        }
+        Err(err) => {
+            log(&format!(
+                "User stream mensaje no es JSON válido. error={err}. payload={message}"
+            ));
+            return;
+        }
+    }
+
     let event: ExecutionReportEvent = match serde_json::from_str(&message) {
         Ok(payload) => payload,
         Err(err) => {

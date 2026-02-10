@@ -180,6 +180,16 @@ pub fn openshort(new_best_bid: f64) {
         break;
     }
 
+    if let Some((order_index, short_size, _)) = selected.as_ref() {
+        log(&format!(
+            "openshort: intento abrir short. new_best_bid={new_best_bid}, order_index={order_index}, short_size={short_size}."
+        ));
+    } else {
+        log(&format!(
+            "openshort: sin candidato para abrir short. new_best_bid={new_best_bid}."
+        ));
+    }
+
     tokio::spawn(async move {
         if let Some((order_index, short_size, sell_order_ids)) = selected {
             if open_short_position(&symbol, short_size).await {
