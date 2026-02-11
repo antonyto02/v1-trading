@@ -51,7 +51,7 @@ pub async fn handle_user_stream_message(message: String) {
         }
     }
 
-    let event: ExecutionReportEvent = match serde_json::from_str(&message) {
+    let raw: serde_json::Value = match serde_json::from_str(&message) {
         Ok(payload) => payload,
         Err(err) => {
             log(&format!("Error parseando JSON de user stream: {err}"));
@@ -59,13 +59,27 @@ pub async fn handle_user_stream_message(message: String) {
         }
     };
 
-    if event.event_type != "executionReport" {
+    let raw_event_type = raw
+        .get("e")
+        .and_then(|value| value.as_str())
+        .unwrap_or("<missing>");
+    if raw_event_type != "executionReport" {
         log(&format!(
             "Evento ignorado: event_type={} (esperado executionReport).",
-            event.event_type
+            raw_event_type
         ));
         return;
     }
+
+    let event: ExecutionReportEvent = match serde_json::from_value(raw) {
+        Ok(payload) => payload,
+        Err(err) => {
+            log(&format!(
+                "Error parseando executionReport de user stream: {err}"
+            ));
+            return;
+        }
+    };
 
     let asset_symbol = get_asset_state_snapshot().symbol;
     if event.symbol != asset_symbol {
