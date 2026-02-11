@@ -1,13 +1,12 @@
-use std::{env, error::Error, time::Duration};
+use std::{error::Error, time::Duration};
 
 use futures_util::StreamExt;
 use serde::Deserialize;
 
+use crate::binance::{spot_ws_base, ws_stream_url};
 use crate::logic::evaluatelevel::evaluate_level;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
-
-const DEFAULT_WS_BASE: &str = "wss://stream.binance.com:9443";
 
 #[derive(Debug, Deserialize)]
 struct BookTickerEvent {
@@ -29,13 +28,10 @@ fn handle_bookticker_message(payload: &str) {
     evaluate_level(best_bid);
 }
 
-
-pub async fn spawn_bookticker_stream(
-    symbol: &str,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let ws_base = env::var("BINANCE_WS_BASE_URL").unwrap_or_else(|_| DEFAULT_WS_BASE.to_string());
+pub async fn spawn_bookticker_stream(symbol: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let ws_base = spot_ws_base();
     let stream_name = format!("{}@bookTicker", symbol.to_lowercase());
-    let ws_url = format!("{}/ws/{}", ws_base.trim_end_matches('/'), stream_name);
+    let ws_url = ws_stream_url(&ws_base, &stream_name);
 
     loop {
         match connect_async(&ws_url).await {

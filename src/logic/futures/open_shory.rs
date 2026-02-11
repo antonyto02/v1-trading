@@ -4,12 +4,11 @@ use chrono::Local;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
+use crate::binance::futures_rest_url;
 use crate::logic::generalFunctions::Requeue;
 use crate::logic::stream_initializer::refresh_orderbook_state;
 use crate::state::asset::get_asset_state_snapshot;
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
-
-const BINANCE_FUTURES_BASE: &str = "https://fapi.binance.com";
 
 fn log(message: &str) {
     println!("[{}] {message}", Local::now().format("%Y-%m-%d %H:%M:%S"));
@@ -56,7 +55,8 @@ async fn set_leverage_x1(
 
     let response = match client
         .post(format!(
-            "{BINANCE_FUTURES_BASE}/fapi/v1/leverage?{signed_query}"
+            "{}?{signed_query}",
+            futures_rest_url("fapi/v1/leverage")
         ))
         .header("X-MBX-APIKEY", api_key)
         .send()
@@ -129,7 +129,8 @@ async fn open_short_position(symbol: &str, position_size: f64) -> bool {
 
     let response = match client
         .post(format!(
-            "{BINANCE_FUTURES_BASE}/fapi/v1/order?{signed_query}"
+            "{}?{signed_query}",
+            futures_rest_url("fapi/v1/order")
         ))
         .header("X-MBX-APIKEY", api_key)
         .send()
@@ -171,13 +172,44 @@ pub fn openshort(new_best_bid: f64) {
             continue;
         }
 
-        let short_size = order.spot.filled_buy - order.spot.filled_sell;
+        let short_size = order.amount_target - order.spot.filled_sell;
         if short_size <= 0.0 {
             continue;
         }
 
         selected = Some((index, short_size, order.spot.sell_order_ids.clone()));
         break;
+    }
+
+    if let Some((order_index, short_size, _)) = selected.as_ref() {
+        log(&format!(
+            "openshort: intento abrir short. new_best_bid={new_best_bid}, order_index={order_index}, short_size={short_size}."
+        ));
+    } else {
+        log(&format!(
+            "openshort: sin candidato para abrir short. new_best_bid={new_best_bid}."
+        ));
+    }
+
+    if let Some((order_index, short_size, _)) = selected.as_ref() {
+        let mut latest_orders_state = get_orders_state_snapshot();
+        if let Some(order) = latest_orders_state.orders.get_mut(*order_index) {
+            if order.has_open_short {
+                log(&format!(
+                    "openshort: orden index={} ya tenía short abierto, se omite intento duplicado.",
+                    order_index
+                ));
+                return;
+            }
+
+            order.has_open_short = true;
+            order.size_position = *short_size;
+            set_orders_state(latest_orders_state);
+            log(&format!(
+                "openshort: short reservado localmente index={}, size_position={short_size} antes de enviar a Binance.",
+                order_index
+            ));
+        }
     }
 
     tokio::spawn(async move {
@@ -188,7 +220,6 @@ pub fn openshort(new_best_bid: f64) {
                     log(&format!(
                         "Binance OK apertura short para {symbol}. Guardando size_position={short_size}."
                     ));
-                    order.has_open_short = true;
                     order.size_position = short_size;
                     set_orders_state(latest_orders_state);
                 }
@@ -199,6 +230,16 @@ pub fn openshort(new_best_bid: f64) {
                 }
                 Requeue(&sell_order_ids);
                 return;
+            }
+
+            let mut latest_orders_state = get_orders_state_snapshot();
+            if let Some(order) = latest_orders_state.orders.get_mut(order_index) {
+                order.has_open_short = false;
+                order.size_position = 0.0;
+                set_orders_state(latest_orders_state);
+                log(&format!(
+                    "openshort: apertura short fallida, se revierte reserva local index={order_index}."
+                ));
             }
         }
 

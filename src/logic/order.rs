@@ -1,3 +1,4 @@
+use crate::binance::spot_rest_url;
 use crate::state::asset::get_asset_state_snapshot;
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
 use chrono::Local;
@@ -10,7 +11,10 @@ fn log(message: &str) {
     println!("[{}] {message}", Local::now().format("%Y-%m-%d %H:%M:%S"));
 }
 
-pub async fn add_filled_buy_for_bid_price(price: f64, quantity: f64) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub async fn add_filled_buy_for_bid_price(
+    price: f64,
+    quantity: f64,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     log(&format!(
         "Execution report BUY: buscando orden con bid_price={price} para sumar filled_buy += {quantity}."
     ));
@@ -73,7 +77,7 @@ pub async fn add_filled_buy_for_bid_price(price: f64, quantity: f64) -> Result<(
     let signature = hex::encode(mac.finalize().into_bytes());
 
     let response = client
-        .post("https://api.binance.com/api/v3/order")
+        .post(spot_rest_url("v3/order"))
         .header("X-MBX-APIKEY", &api_key)
         .query(&[("signature", signature)])
         .body(query)

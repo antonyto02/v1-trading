@@ -1,19 +1,17 @@
 use std::{env, error::Error, time::Duration};
 
 use futures_util::StreamExt;
-use tokio::time::{sleep, interval};
+use tokio::time::{interval, sleep};
 use tokio_tungstenite::connect_async;
 
+use crate::binance::{spot_rest_base, spot_ws_base, ws_stream_url};
 use crate::logic::user_stream_handler::handle_user_stream_message;
-
-const DEFAULT_REST_BASE: &str = "https://api.binance.com";
-const DEFAULT_WS_BASE: &str = "wss://stream.binance.com:9443";
 
 pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
     let api_key = env::var("BINANCE_API_KEY")?;
     let _api_secret = env::var("BINANCE_API_SECRET")?;
-    let rest_base = env::var("BINANCE_REST_BASE_URL").unwrap_or_else(|_| DEFAULT_REST_BASE.to_string());
-    let ws_base = env::var("BINANCE_WS_BASE_URL").unwrap_or_else(|_| DEFAULT_WS_BASE.to_string());
+    let rest_base = spot_rest_base();
+    let ws_base = spot_ws_base();
 
     let client = reqwest::Client::new();
 
@@ -27,11 +25,7 @@ pub async fn spawn_user_stream() -> Result<(), Box<dyn Error + Send + Sync>> {
             }
         };
 
-        let ws_url = format!(
-            "{}/ws/{}",
-            ws_base.trim_end_matches('/'),
-            listen_key
-        );
+        let ws_url = ws_stream_url(&ws_base, &listen_key);
 
         match connect_async(&ws_url).await {
             Ok((mut ws_stream, _)) => {
@@ -81,7 +75,7 @@ async fn create_listen_key(
     rest_base: &str,
     api_key: &str,
 ) -> Result<String, Box<dyn Error + Send + Sync>> {
-    let url = format!("{}/api/v3/userDataStream", rest_base.trim_end_matches('/'));
+    let url = format!("{}/v3/userDataStream", rest_base.trim_end_matches('/'));
     let response = client
         .post(url)
         .header("X-MBX-APIKEY", api_key)
@@ -125,7 +119,7 @@ async fn renew_listen_key(
     listen_key: &str,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let url = format!(
-        "{}/api/v3/userDataStream?listenKey={}",
+        "{}/v3/userDataStream?listenKey={}",
         rest_base.trim_end_matches('/'),
         listen_key
     );
