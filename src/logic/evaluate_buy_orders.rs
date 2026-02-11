@@ -10,7 +10,7 @@ pub async fn EvaluateBuyOrders() {
     let (candidates, best_bids) =
         generalFunctions::ProcessFrozenBlocks(candidates, &best_bids, &best_asks);
     let (candidates, best_bids) =
-        generalFunctions::ProcessActiveBuyOrders(candidates, &best_bids);
+        generalFunctions::ProcessActiveBuyOrders(candidates, &best_bids).await;
     if let Err(error) = generalFunctions::FillMissingBestBids(&candidates, &best_bids).await {
         let _ = error;
     }
