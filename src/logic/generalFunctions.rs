@@ -160,7 +160,7 @@ pub fn ProcessFrozenBlocks(
         let is_in_best_levels = best_bids
             .iter()
             .chain(best_asks.iter())
-            .any(|level| level.price == bid_price);
+            .any(|level| (level.price - bid_price).abs() < 1e-9);
 
         candidates.retain(|candidate| *candidate != index);
         if let Some(matching_index) = updated_best_bids
@@ -199,7 +199,7 @@ pub async fn ProcessActiveBuyOrders(
 
         let is_in_best_bids = updated_best_bids
             .iter()
-            .any(|level| level.price == bid_price);
+            .any(|level| (level.price - bid_price).abs() < 1e-9);
 
         if is_in_best_bids {
             candidates.retain(|candidate| *candidate != index);
@@ -237,17 +237,10 @@ pub async fn CleanOrder(index: usize) {
     let mut order_ids_to_cancel = order.spot.buy_order_ids.clone();
     order_ids_to_cancel.extend(order.spot.sell_order_ids.clone());
 
-    if let Err(error) = cancel_spot_orders(&symbol, &order_ids_to_cancel).await {
-        log(&format!(
-            "CleanOrder: no se pudo cancelar en Binance index={index}. error={error}"
-        ));
-        return;
-    }
-
     let mut latest_orders_state = get_orders_state_snapshot();
     if let Some(order) = latest_orders_state.orders.get_mut(index) {
         log(&format!(
-            "CleanOrder: órdenes canceladas en Binance, reseteando index={index}."
+            "CleanOrder: reseteando estado local index={index} (idempotente)."
         ));
         order.spot.bid_price = None;
         order.spot.ask_price = None;
@@ -257,4 +250,12 @@ pub async fn CleanOrder(index: usize) {
         order.spot.filled_sell = 0.0;
         set_orders_state(latest_orders_state);
     }
+
+    tokio::spawn(async move {
+        if let Err(error) = cancel_spot_orders(&symbol, &order_ids_to_cancel).await {
+            log(&format!(
+                "CleanOrder: cancelación best-effort falló en Binance index={index}. error={error}"
+            ));
+        }
+    });
 }
