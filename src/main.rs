@@ -1,9 +1,10 @@
 use std::error::Error;
 
-mod stream;
+mod binance;
+mod http;
 mod logic;
 mod state;
-mod http;
+mod stream;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {

@@ -4,12 +4,11 @@ use chrono::Local;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
+use crate::binance::futures_rest_url;
 use crate::logic::evaluate_buy_orders::EvaluateBuyOrders;
 use crate::logic::stream_initializer::refresh_orderbook_state;
 use crate::state::asset::get_asset_state_snapshot;
 use crate::state::orders::{get_orders_state_snapshot, set_orders_state};
-
-const BINANCE_FUTURES_BASE: &str = "https://fapi.binance.com";
 
 fn log(message: &str) {
     println!("[{}] {message}", Local::now().format("%Y-%m-%d %H:%M:%S"));
@@ -56,7 +55,8 @@ async fn set_leverage_x1(
 
     let response = match client
         .post(format!(
-            "{BINANCE_FUTURES_BASE}/fapi/v1/leverage?{signed_query}"
+            "{}?{signed_query}",
+            futures_rest_url("fapi/v1/leverage")
         ))
         .header("X-MBX-APIKEY", api_key)
         .send()
@@ -130,7 +130,8 @@ async fn close_short_position(symbol: &str, position_size: f64) -> bool {
 
     let response = match client
         .post(format!(
-            "{BINANCE_FUTURES_BASE}/fapi/v1/order?{signed_query}"
+            "{}?{signed_query}",
+            futures_rest_url("fapi/v1/order")
         ))
         .header("X-MBX-APIKEY", api_key)
         .send()
